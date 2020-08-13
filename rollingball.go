@@ -25,6 +25,7 @@ type Game struct {
 	Things []*Thing
 }
 
+// Thing will be spawned on screen. It's a cow.
 type Thing struct {
 	Name *tentsuyu.TextElement
 	X    float64
@@ -62,11 +63,6 @@ func (g *Game) Update(screen *ebiten.Image) error {
 		fmt.Println("respawned")
 	}
 
-	//check spacebar
-	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		g.SpawnThing("Bob")
-	}
-
 	//check collision
 	for _, v := range g.Things {
 		if v.X == rollX {
@@ -85,17 +81,19 @@ func (g *Game) Update(screen *ebiten.Image) error {
 	return nil
 }
 
-type RequestType struct {
+// ResponseBody is teh expected format of the GET response.
+type ResponseBody struct {
 	Names []string
 }
 
+// Make a GET request to the server to check for new things to spawn, and take care of spawning them.
 func (g *Game) NetworkCall() error {
 	res, err := http.Get(serverURL)
 	if err != nil {
 		return err
 	}
 
-	var req RequestType
+	var req ResponseBody
 
 	err = json.NewDecoder(res.Body).Decode(&req)
 	if err != nil {
@@ -113,6 +111,7 @@ func (g *Game) NetworkCall() error {
 	return nil
 }
 
+// SpawnThing will create a new Thing with the given name and a random location, and add it to the game.
 func (g *Game) SpawnThing(name string) {
 	fmt.Println("spawned")
 	t := &Thing{}
@@ -123,13 +122,13 @@ func (g *Game) SpawnThing(name string) {
 	g.Things = append(g.Things, t)
 }
 
+// DespawnThing will remove t from the game.
 func (g *Game) DespawnThing(t *Thing) {
-	//loop over thing array
 
-	//remove thing from array
-
+	//loop over thing array until we find t
 	for i, v := range g.Things {
 		if v == t {
+			//remove t from array
 			g.Things = append(g.Things[:i], g.Things[i+1:]...)
 		}
 	}
@@ -152,30 +151,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		drawThing(screen, v)
 	}
 
-	drawBall(screen, g)
+	drawBall(screen, (g.count/8)%frameNum)
 
 }
 
-func drawThing(screen *ebiten.Image, v *Thing) {
+// drawThing handles rendering the given Thing to the screen.
+func drawThing(screen *ebiten.Image, t *Thing) {
 	op := &ebiten.DrawImageOptions{}
 
 	op.GeoM.Scale(0.2, 0.2)
 
-	op.GeoM.Translate(v.X, v.Y)
+	op.GeoM.Translate(t.X, t.Y)
 
 	screen.DrawImage(cowImage, op)
 
-	v.Name.DrawApplyZoom(screen)
+	t.Name.DrawApplyZoom(screen)
 }
 
-func drawBall(screen *ebiten.Image, g *Game) {
+// drawBall handles rendering the ball to the screen with the given animation frame.
+func drawBall(screen *ebiten.Image, frame int) {
 	op := &ebiten.DrawImageOptions{}
 
 	op.GeoM.Scale(0.65, 0.65)
 
 	op.GeoM.Translate(rollX, rollY)
 
-	screen.DrawImage(rollImages[(g.count/8)%frameNum], op)
+	screen.DrawImage(rollImages[frame], op)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
@@ -184,6 +185,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth * layoutMult, screenHeight * layoutMult
 }
 
+// NewGame initializes a game.
 func NewGame() *Game {
 	g := &Game{}
 	g.Things = []*Thing{}
@@ -203,8 +205,8 @@ func main() {
 		panic(err)
 	}
 
+	// we must convert all of the Images in rollgif into ebiten Images.
 	for _, v := range rollGif.Image {
-
 		frameNum++
 		if frameNum == 1 {
 			continue
